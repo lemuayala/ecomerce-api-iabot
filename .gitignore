@@ -1,0 +1,17 @@
+# Archivos de compilación
+bin/
+obj/
+
+# Archivos de usuario
+*.user
+*.suo
+
+# Configuraciones locales
+.vscode/
+*.env
+
+# Archivos de Docker
+*.dockerfile
+
+# Otros
+*.log
