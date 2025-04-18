@@ -1,31 +1,29 @@
 using dotenv.net;
 using Microsoft.Data.SqlClient;
 using Microsoft.SemanticKernel;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
+using MediatR;
+using EcomerceAI.Api.Features.Products.Application.Queries;
 
 DotEnv.Load();
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Configuración básica
+builder.Services
+    .AddLogging(configure => configure.AddConsole().AddDebug())
+    .AddHttpContextAccessor();
 
 // Configuración de Azure OpenAI
 var aiConfig = new
 {
     Endpoint = Environment.GetEnvironmentVariable("AZURE_OPENAI_ENDPOINT"),
     ApiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_APIKEY"),
-    DeploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT"),
-    EmbeddingDeployment = Environment.GetEnvironmentVariable("AZURE_OPENAI_EMBEDDING_DEPLOYMENT")
+    DeploymentName = Environment.GetEnvironmentVariable("AZURE_OPENAI_DEPLOYMENT")
 };
 
-// Configuración de la base de datos
-var dbConfig = new
-{
-    SqlConnectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING"),
-    MongoConnectionString = Environment.GetEnvironmentVariable("MONGO_CONNECTION_STRING")
-};
-
-// Configuración del kernel de IA
+// Configurar Semantic Kernel
 var kernel = Kernel.CreateBuilder()
     .AddAzureOpenAIChatCompletion(
         deploymentName: aiConfig.DeploymentName,
@@ -33,49 +31,35 @@ var kernel = Kernel.CreateBuilder()
         apiKey: aiConfig.ApiKey)
     .Build();
 
-// Configuración de logging
-builder.Services.AddLogging(configure =>
-    configure.AddConsole().AddDebug());
-
-// Configuración de Health Checks
-var healthChecksBuilder = builder.Services.AddHealthChecks()
-    .AddCheck<AzureOpenAIHealthCheck>("azure-openai");
-
-if (!string.IsNullOrEmpty(dbConfig.SqlConnectionString))
-{
-    healthChecksBuilder.AddSqlServer(
-        connectionString: dbConfig.SqlConnectionString,
-        name: "sql-server",
-        failureStatus: HealthStatus.Degraded,
-        tags: new[] { "db", "sql" });
-}
-
-// if (!string.IsNullOrEmpty(dbConfig.MongoConnectionString))
-// {
-//     healthChecksBuilder.AddMongoDb(
-//         name: "mongodb",
-//         failureStatus: HealthStatus.Degraded,
-//         tags: new[] { "db", "nosql" });
-// }
-
-// Registrar servicios
 builder.Services.AddSingleton(kernel);
-builder.Services.AddSingleton(aiConfig);
-builder.Services.AddSingleton(dbConfig);
 
-// Configuración de la conexión SQL
-builder.Services.AddScoped(_ =>
-    new SqlConnection(dbConfig.SqlConnectionString));
+// Configuración de la base de datos
+var dbConfig = new
+{
+    SqlConnectionString = Environment.GetEnvironmentVariable("SQL_CONNECTION_STRING")
+};
 
-// Repositorios
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
+// Registrar servicios de infraestructura
+builder.Services
+    .AddScoped(_ => new SqlConnection(dbConfig.SqlConnectionString))
+    .AddScoped<IProductRepository, ProductRepository>()
+    .AddScoped<IRecommendationService, RecommendationService>();
 
-// Servicios de IA
-builder.Services.AddScoped<IRecommendationService, AIRecommendationService>();
+// Configuración de MediatR (CQRS)
+builder.Services.AddMediatR(cfg =>
+    cfg.RegisterServicesFromAssembly(typeof(GetProductByIdQuery).Assembly));
+
+// Health Checks
+builder.Services.AddHealthChecks()
+    .AddSqlServer(dbConfig.SqlConnectionString, name: "sql-server")
+    .AddCheck<AzureOpenAIHealthCheck>("azure-openai");
 
 var app = builder.Build();
 
-// Configuración del endpoint de health checks
+// Middleware básico
+app.UseHttpsRedirection();
+
+// Health Check endpoint
 app.MapHealthChecks("/health", new HealthCheckOptions
 {
     ResponseWriter = async (context, report) =>
@@ -96,31 +80,34 @@ app.MapHealthChecks("/health", new HealthCheckOptions
     }
 });
 
+// Endpoints
 app.MapGet("/", () => "E-Commerce AI Assistant API v1.0");
 
 // Grupo de endpoints para productos
 var productGroup = app.MapGroup("/api/products");
 
 productGroup.MapGet("/{id}", async (int id, IProductRepository repo) =>
-{
-    var product = await repo.GetByIdAsync(id);
-    return product is not null ? Results.Ok(product) : Results.NotFound();
-});
+    await repo.GetByIdAsync(id) is { } product
+        ? Results.Ok(product)
+        : Results.NotFound());
 
+productGroup.MapGet("/cqrs/{id}", async (int id, IMediator mediator) =>
+    await mediator.Send(new GetProductByIdQuery(id)) is { } product
+        ? Results.Ok(product)
+        : Results.NotFound());
+
+// Endpoint de recomendaciones con IA
 productGroup.MapGet("/recommendations/{userId}",
     async (int userId, IRecommendationService service) =>
-    {
-        var recommendations = await service.GetPersonalizedRecommendations(userId);
-        return Results.Ok(recommendations);
-    });
+        Results.Ok(await service.GetPersonalizedRecommendations(userId)));
 
+// Endpoint de búsqueda (Repository)
 productGroup.MapGet("/search", async (string query, IProductRepository repo) =>
 {
     if (string.IsNullOrWhiteSpace(query))
         return Results.BadRequest("Query parameter is required");
 
-    var results = await repo.SearchAsync(query);
-    return Results.Ok(results);
+    return Results.Ok(await repo.SearchAsync(query));
 });
 
 app.Run();
