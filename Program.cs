@@ -110,4 +110,6 @@ productGroup.MapGet("/search", async (string query, IProductRepository repo) =>
     return Results.Ok(await repo.SearchAsync(query));
 });
 
+app.MapProductEndpoints();
+
 app.Run();

@@ -1,7 +1,6 @@
 using Dapper;
 using Microsoft.Data.SqlClient;
 
-
 public class ProductRepository : IProductRepository
 {
     private readonly SqlConnection _connection;
@@ -9,6 +8,17 @@ public class ProductRepository : IProductRepository
     public ProductRepository(SqlConnection connection)
     {
         _connection = connection;
+    }
+
+    public async Task<int> AddAsync(Product product)
+    {
+        const string sql = """
+            INSERT INTO Products (Name, Description, Price, Category)
+            VALUES (@Name, @Description, @Price, @Category);
+            SELECT CAST(SCOPE_IDENTITY() as int);
+            """;
+
+        return await _connection.ExecuteScalarAsync<int>(sql, product);
     }
 
     public async Task<List<Product>> GetByCategoryAsync(string category)

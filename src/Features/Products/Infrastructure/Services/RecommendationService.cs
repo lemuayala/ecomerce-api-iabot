@@ -2,16 +2,16 @@ using System.Text.Json;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-public class AIRecommendationService : IRecommendationService
+public class RecommendationService : IRecommendationService
 {
     private readonly Kernel _kernel;
     private readonly IProductRepository _productRepository;
-    private readonly ILogger<AIRecommendationService> _logger;
+    private readonly ILogger<RecommendationService> _logger;
 
-    public AIRecommendationService(
+    public RecommendationService(
         Kernel kernel,
         IProductRepository productRepository,
-        ILogger<AIRecommendationService> logger)
+        ILogger<RecommendationService> logger)
     {
         _kernel = kernel;
         _productRepository = productRepository;
