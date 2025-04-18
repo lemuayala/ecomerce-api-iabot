@@ -1,32 +1,39 @@
-using MediatR;
-using EcomerceAI.Api.Features.Products.Application.Commands;
-using EcomerceAI.Api.Features.Products.Application.Queries;
 
 public static class ProductEndpoints
 {
     public static void MapProductEndpoints(this WebApplication app)
     {
-        var productGroup = app.MapGroup("/api/products");
+        var productGroup = app.MapGroup("/api/products").WithTags("Products");
 
-        // Endpoint para obtener producto por ID usando CQRS
-        productGroup.MapGet("/{id}", async (int id, IMediator mediator) =>
-            await mediator.Send(new GetProductByIdQuery(id)) is { } product
+        // Obtener producto por ID
+        productGroup.MapGet("/{id}", async (int id, IProductRepository repo) =>
+            await repo.GetByIdAsync(id) is { } product
                 ? Results.Ok(product)
                 : Results.NotFound());
 
-        // Endpoint para crear producto
-        productGroup.MapPost("/", async (CreateProductCommand command, IMediator mediator) =>
+        // Crear producto
+        productGroup.MapPost("/", async (Product product, IProductRepository repo) =>
         {
-            var productId = await mediator.Send(command);
+            var productId = await repo.AddAsync(product);
             return Results.Created($"/api/products/{productId}", null);
         });
 
-        // Endpoint para recomendaciones personalizadas
-        productGroup.MapGet("/recommendations/{userId}",
-            async (int userId, IRecommendationService service) =>
-                Results.Ok(await service.GetPersonalizedRecommendations(userId)));
+        // Actualizar producto
+        productGroup.MapPut("/{id}", async (int id, Product product, IProductRepository repo) =>
+        {
+            if (id != product.Id) return Results.BadRequest();
+            await repo.UpdateAsync(product);
+            return Results.Ok();
+        });
 
-        // Endpoint de búsqueda
+        // Eliminar producto
+        productGroup.MapDelete("/{id}", async (int id, IProductRepository repo) =>
+        {
+            await repo.DeleteAsync(id);
+            return Results.NoContent();
+        });
+
+        // Búsqueda
         productGroup.MapGet("/search", async (string query, IProductRepository repo) =>
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -34,5 +41,10 @@ public static class ProductEndpoints
 
             return Results.Ok(await repo.SearchAsync(query));
         });
+
+        // Recomendaciones (Servicio especializado con IA)
+        productGroup.MapGet("/recommendations/{userId}",
+            async (int userId, IRecommendationService service) =>
+                Results.Ok(await service.GetPersonalizedRecommendations(userId)));
     }
 }
