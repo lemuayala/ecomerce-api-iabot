@@ -82,34 +82,6 @@ app.MapHealthChecks("/health", new HealthCheckOptions
 
 // Endpoints
 app.MapGet("/", () => "E-Commerce AI Assistant API v1.0");
-
-// Grupo de endpoints para productos
-var productGroup = app.MapGroup("/api/products");
-
-productGroup.MapGet("/{id}", async (int id, IProductRepository repo) =>
-    await repo.GetByIdAsync(id) is { } product
-        ? Results.Ok(product)
-        : Results.NotFound());
-
-productGroup.MapGet("/cqrs/{id}", async (int id, IMediator mediator) =>
-    await mediator.Send(new GetProductByIdQuery(id)) is { } product
-        ? Results.Ok(product)
-        : Results.NotFound());
-
-// Endpoint de recomendaciones con IA
-productGroup.MapGet("/recommendations/{userId}",
-    async (int userId, IRecommendationService service) =>
-        Results.Ok(await service.GetPersonalizedRecommendations(userId)));
-
-// Endpoint de búsqueda (Repository)
-productGroup.MapGet("/search", async (string query, IProductRepository repo) =>
-{
-    if (string.IsNullOrWhiteSpace(query))
-        return Results.BadRequest("Query parameter is required");
-
-    return Results.Ok(await repo.SearchAsync(query));
-});
-
 app.MapProductEndpoints();
 
 app.Run();
