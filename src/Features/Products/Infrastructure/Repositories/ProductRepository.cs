@@ -19,7 +19,9 @@ public class ProductRepository : IProductRepository
         WHERE Id = @Id
         """;
 
-        return await _connection.QueryFirstOrDefaultAsync<Product>(sql, new { Id = id });
+        var product = await _connection.QueryFirstOrDefaultAsync<Product>(sql, new { Id = id });
+
+        return product ?? new Product();
     }
 
     public async Task<int> AddAsync(Product product)

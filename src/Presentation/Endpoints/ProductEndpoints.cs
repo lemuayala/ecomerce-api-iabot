@@ -1,4 +1,6 @@
 
+using EcomerceAI.Api.Features.Products.Domain.Models;
+
 public static class ProductEndpoints
 {
     public static void MapProductEndpoints(this WebApplication app)
