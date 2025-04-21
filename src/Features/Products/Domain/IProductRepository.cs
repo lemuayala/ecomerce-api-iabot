@@ -1,3 +1,5 @@
+using EcomerceAI.Api.Features.Products.Domain.Models;
+
 public interface IProductRepository
 {
     Task<Product> GetByIdAsync(int id);

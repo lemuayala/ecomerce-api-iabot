@@ -1,4 +1,5 @@
 using Dapper;
+using EcomerceAI.Api.Features.Products.Domain.Models;
 using Microsoft.Data.SqlClient;
 
 public class ProductRepository : IProductRepository
@@ -13,33 +14,38 @@ public class ProductRepository : IProductRepository
     public async Task<Product> GetByIdAsync(int id)
     {
         const string sql = """
-            SELECT Id, Name, Description, Price, Category
-            FROM Products
-            WHERE Id = @Id
-            """;
+        SELECT Id, Name, Description, Price, Category, Tags, Metadata
+        FROM Products
+        WHERE Id = @Id
+        """;
+
         return await _connection.QueryFirstOrDefaultAsync<Product>(sql, new { Id = id });
     }
 
     public async Task<int> AddAsync(Product product)
     {
         const string sql = """
-            INSERT INTO Products (Name, Description, Price, Category)
-            VALUES (@Name, @Description, @Price, @Category);
-            SELECT CAST(SCOPE_IDENTITY() as int);
-            """;
+        INSERT INTO Products (Name, Description, Price, Category, Tags, Metadata)
+        VALUES (@Name, @Description, @Price, @Category, @Tags, @Metadata);
+        SELECT CAST(SCOPE_IDENTITY() as int);
+        """;
+
         return await _connection.ExecuteScalarAsync<int>(sql, product);
     }
 
     public async Task UpdateAsync(Product product)
     {
         const string sql = """
-            UPDATE Products 
-            SET Name = @Name, 
-                Description = @Description, 
-                Price = @Price, 
-                Category = @Category
-            WHERE Id = @Id
-            """;
+        UPDATE Products 
+        SET Name = @Name, 
+            Description = @Description, 
+            Price = @Price, 
+            Category = @Category,
+            Tags = @Tags,
+            Metadata = @Metadata
+        WHERE Id = @Id
+        """;
+
         await _connection.ExecuteAsync(sql, product);
     }
 

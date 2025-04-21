@@ -3,8 +3,10 @@ using Microsoft.Data.SqlClient;
 using Microsoft.SemanticKernel;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
+using EcomerceAI.Api.Infrastructure.Database.TypeHandlers;
+using Dapper;
 using MediatR;
-using EcomerceAI.Api.Features.Products.Application.Queries;
+using System.Text.Encodings.Web;
 
 DotEnv.Load();
 
@@ -14,6 +16,10 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services
     .AddLogging(configure => configure.AddConsole().AddDebug())
     .AddHttpContextAccessor();
+
+// Registrar los Type Handlers de Dapper
+SqlMapper.AddTypeHandler(new JsonListTypeHandler<List<string>>());
+SqlMapper.AddTypeHandler(new JsonDictTypeHandler<Dictionary<string, string>>());
 
 // Configuración de Azure OpenAI
 var aiConfig = new
@@ -46,13 +52,20 @@ builder.Services
     .AddScoped<IRecommendationService, RecommendationService>();
 
 // Configuración de MediatR (CQRS)
-builder.Services.AddMediatR(cfg =>
-    cfg.RegisterServicesFromAssembly(typeof(GetProductByIdQuery).Assembly));
+// builder.Services.AddMediatR(cfg =>
+//     cfg.RegisterServicesFromAssembly(typeof(GetProductByIdQuery).Assembly));
 
 // Health Checks
 builder.Services.AddHealthChecks()
     .AddSqlServer(dbConfig.SqlConnectionString, name: "sql-server")
     .AddCheck<AzureOpenAIHealthCheck>("azure-openai");
+
+// Configurar las opciones de serialización JSON para toda la aplicación
+builder.Services.Configure<JsonSerializerOptions>(options =>
+{
+    options.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
+    options.PropertyNameCaseInsensitive = true;
+});
 
 var app = builder.Build();
 

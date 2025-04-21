@@ -1,3 +1,7 @@
+using System.Text.Json.Serialization;
+
+namespace EcomerceAI.Api.Features.Products.Domain.Models;
+
 public class Product
 {
     public int Id { get; set; }
@@ -5,6 +9,10 @@ public class Product
     public string Description { get; set; }
     public decimal Price { get; set; }
     public string Category { get; set; }
-    public List<string> Tags { get; set; } = new();
-    public Dictionary<string, string> Metadata { get; set; } = new();
+    
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<string> Tags { get; set; } = new List<string>();
+    
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
 }
