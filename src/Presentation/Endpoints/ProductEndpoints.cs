@@ -35,6 +35,10 @@ public static class ProductEndpoints
             return Results.NoContent();
         });
 
+        // Obtener todos
+        productGroup.MapGet("/", async (IProductRepository repo) =>
+            Results.Ok(await repo.GetAllAsync()));
+
         // Búsqueda
         productGroup.MapGet("/search", async (string query, IProductRepository repo) =>
         {

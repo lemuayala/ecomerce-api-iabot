@@ -77,4 +77,13 @@ public class ProductRepository : IProductRepository
             """;
         return (await _connection.QueryAsync<Product>(sql, new { Category = category })).ToList();
     }
+
+    public async Task<List<Product>> GetAllAsync()
+    {
+        const string sql = """
+            SELECT Id, Name, Description, Price, Category
+            FROM Products
+            """;
+        return (await _connection.QueryAsync<Product>(sql)).ToList();
+    }
 }
