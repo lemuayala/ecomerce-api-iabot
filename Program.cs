@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
 using EcomerceAI.Api.Infrastructure.Database.TypeHandlers;
 using Dapper;
-using MediatR;
 using System.Text.Encodings.Web;
+using Azure.Storage.Blobs;
 
 DotEnv.Load();
 
@@ -39,6 +39,30 @@ var kernel = Kernel.CreateBuilder()
 
 builder.Services.AddSingleton(kernel);
 
+// Configuración de Azure Blob Storage
+builder.Services.AddSingleton<BlobServiceClient>(provider =>
+{
+    var connectionString = Environment.GetEnvironmentVariable("AZURE_BLOB_STORAGE_STRING");
+
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException("La cadena de conexión de Azure Blob Storage ('AZURE_BLOB_STORAGE_STRING') no está configurada.");
+    }
+
+    return new BlobServiceClient(
+        connectionString,
+        new BlobClientOptions
+        {
+            Retry = {
+                MaxRetries = 3,
+                Mode = Azure.Core.RetryMode.Exponential,
+                Delay = TimeSpan.FromSeconds(2),
+                MaxDelay = TimeSpan.FromSeconds(10)
+            }
+        }
+    );
+});
+
 // Configuración de la base de datos
 var dbConfig = new
 {
@@ -66,6 +90,8 @@ builder.Services.Configure<JsonSerializerOptions>(options =>
     options.Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping;
     options.PropertyNameCaseInsensitive = true;
 });
+
+builder.Services.AddScoped<IAzureStorageService, AzureStorageService>();
 
 var app = builder.Build();
 

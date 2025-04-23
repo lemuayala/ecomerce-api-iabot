@@ -14,7 +14,7 @@ public class ProductRepository : IProductRepository
     public async Task<Product> GetByIdAsync(int id)
     {
         const string sql = """
-        SELECT Id, Name, Description, Price, Category, Tags, Metadata
+        SELECT Id, Name, Description, Price, Category, ImageUrl, Tags, Metadata
         FROM Products
         WHERE Id = @Id
         """;
@@ -27,8 +27,8 @@ public class ProductRepository : IProductRepository
     public async Task<int> AddAsync(Product product)
     {
         const string sql = """
-        INSERT INTO Products (Name, Description, Price, Category, Tags, Metadata)
-        VALUES (@Name, @Description, @Price, @Category, @Tags, @Metadata);
+        INSERT INTO Products (Name, Description, Price, Category, ImageUrl, Tags, Metadata)
+        VALUES (@Name, @Description, @Price, @Category, @ImageUrl, @Tags, @Metadata);
         SELECT CAST(SCOPE_IDENTITY() as int);
         """;
 
@@ -43,6 +43,7 @@ public class ProductRepository : IProductRepository
             Description = @Description, 
             Price = @Price, 
             Category = @Category,
+            ImageUrl = @ImageUrl,
             Tags = @Tags,
             Metadata = @Metadata
         WHERE Id = @Id
@@ -71,7 +72,7 @@ public class ProductRepository : IProductRepository
     public async Task<List<Product>> GetByCategoryAsync(string category)
     {
         const string sql = """
-            SELECT Id, Name, Description, Price, Category
+            SELECT Name, Description, Price, Category, ImageUrl, Tags, Metadata
             FROM Products
             WHERE Category = @Category
             """;
@@ -81,7 +82,7 @@ public class ProductRepository : IProductRepository
     public async Task<List<Product>> GetAllAsync()
     {
         const string sql = """
-            SELECT Id, Name, Description, Price, Category
+            SELECT Name, Description, Price, Category, ImageUrl, Tags, Metadata
             FROM Products
             """;
         return (await _connection.QueryAsync<Product>(sql)).ToList();
