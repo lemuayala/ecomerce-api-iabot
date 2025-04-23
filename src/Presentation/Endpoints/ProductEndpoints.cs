@@ -1,4 +1,6 @@
 using EcomerceAI.Api.Features.Products.Domain.Models;
+using EcomerceAI.Application.Features.Products.Commands;
+using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,45 +17,38 @@ public static class ProductEndpoints
                 : Results.NotFound());
 
         // Crear producto
-        productGroup.MapPost("/", async Task<Results<Ok<Product>, BadRequest<string>>> (
-            [FromForm] CreateProductRequest request,
-            IAzureStorageService storageService,
-            IProductRepository repo) =>
-        {
-            // Subir imagen si existe
-            string imageUrl = null;
-            if (request.ImageFile != null)
-            {
-                try
-                {
-                    imageUrl = await storageService.UploadImageAsync(request.ImageFile);
-                }
-                catch (Exception ex)
-                {
-                    return TypedResults.BadRequest($"Error al subir imagen: {ex.Message}");
-                }
-            }
+        productGroup.MapPost("/", async Task<IResult> (
+                    [FromForm] CreateProductRequest request,
+                    IMediator mediator,
+                    ILogger<Product> logger) =>
+                    {
+                        try
+                        {
+                            // Crear el comando con la request recibida
+                            var command = new CreateProductCommand(request);
+                            // Enviar el comando al handler a través de MediatR
+                            var createdProduct = await mediator.Send(command);
 
-            // Crear producto
-            var product = new Product
-            {
-                Name = request.Name,
-                Description = request.Description,
-                Price = request.Price,
-                Category = request.Category,
-                ImageUrl = imageUrl,
-                Tags = request.Tags ?? new List<string>(),
-                Metadata = request.Metadata
-            };
-
-            await repo.AddAsync(product);
-
-            return TypedResults.Ok(product);
-        })
-        .Accepts<CreateProductRequest>("multipart/form-data")
-        .Produces<Product>(StatusCodes.Status200OK)
-        .Produces<string>(StatusCodes.Status400BadRequest)
-        .DisableAntiforgery();
+                            // Si MediatR no lanzó excepción, todo fue bien
+                            logger.LogInformation("Producto creado exitosamente con ID {ProductId}", createdProduct.Id); // Example log
+                            return Results.Ok(createdProduct);
+                        }
+                        catch (ApplicationException appEx)
+                        {
+                            logger.LogError(appEx, "Error de aplicación al crear producto: {ErrorMessage}", appEx.Message);
+                            return Results.UnprocessableEntity(appEx.Message);
+                        }
+                        catch (Exception ex)
+                        {
+                            logger.LogError(ex, "Error inesperado durante la creación del producto.");
+                            return Results.BadRequest($"Ocurrió un error inesperado: {ex.Message}");
+                        }
+                    })
+                     .Accepts<CreateProductRequest>("multipart/form-data")
+                     .Produces<Product>(StatusCodes.Status200OK)
+                     .Produces<string>(StatusCodes.Status400BadRequest)
+                     .Produces<string>(StatusCodes.Status422UnprocessableEntity)
+                     .DisableAntiforgery();
 
         // Actualizar producto
         productGroup.MapPut("/{id}", async (int id, Product product, IProductRepository repo) =>
