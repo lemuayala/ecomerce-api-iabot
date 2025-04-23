@@ -24,15 +24,17 @@ public class ProductRepository : IProductRepository
         return product ?? new Product();
     }
 
-    public async Task<int> AddAsync(Product product)
+    public async Task<int> AddAsync(Product product, CancellationToken cancellationToken = default)
     {
         const string sql = """
         INSERT INTO Products (Name, Description, Price, Category, ImageUrl, Tags, Metadata)
+        OUTPUT INSERTED.Id
         VALUES (@Name, @Description, @Price, @Category, @ImageUrl, @Tags, @Metadata);
-        SELECT CAST(SCOPE_IDENTITY() as int);
         """;
 
-        return await _connection.ExecuteScalarAsync<int>(sql, product);
+        var command = new CommandDefinition(sql, product, cancellationToken: cancellationToken);
+
+        return await _connection.QuerySingleAsync<int>(command);
     }
 
     public async Task UpdateAsync(Product product)
