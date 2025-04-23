@@ -14,12 +14,13 @@ public class AzureStorageService : IAzureStorageService
         _containerClient.CreateIfNotExists(PublicAccessType.Blob);
     }
 
-    public async Task<string> UploadImageAsync(IFormFile file)
+    public async Task<string> UploadImageAsync(IFormFile file, CancellationToken cancellationToken = default)
     {
         var fileName = $"{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
         var blobClient = _containerClient.GetBlobClient(fileName);
 
         using var stream = file.OpenReadStream();
+
         await blobClient.UploadAsync(stream, new BlobUploadOptions
         {
             HttpHeaders = new BlobHttpHeaders
@@ -27,15 +28,23 @@ public class AzureStorageService : IAzureStorageService
                 ContentType = GetContentType(file.FileName),
                 CacheControl = "public, max-age=31536000"
             }
-        });
+        }, cancellationToken);
 
         return blobClient.Uri.ToString();
     }
 
-    public async Task DeleteImageAsync(string imageUrl)
+    public async Task DeleteImageAsync(string imageUrl, CancellationToken cancellationToken = default) // Añadir CancellationToken
     {
-        var blobName = Path.GetFileName(new Uri(imageUrl).LocalPath);
-        await _containerClient.GetBlobClient(blobName).DeleteIfExistsAsync();
+        // Validar la URL antes de usarla
+        if (Uri.TryCreate(imageUrl, UriKind.Absolute, out var uri))
+        {
+            var blobName = Path.GetFileName(uri.LocalPath);
+            if (!string.IsNullOrEmpty(blobName))
+            {
+                var blobClient = _containerClient.GetBlobClient(blobName);
+                await blobClient.DeleteIfExistsAsync(DeleteSnapshotsOption.IncludeSnapshots, null, cancellationToken);
+            }
+        }
     }
 
     public async Task<string> GenerateSasTokenAsync(string imageUrl, TimeSpan expiryTime)
