@@ -15,5 +15,5 @@ public class Product
     public List<string> Tags { get; set; } = new List<string>();
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public Dictionary<string, string> Metadata { get; set; } = new Dictionary<string, string>();
+    public string Metadata { get; set; } = null;
 }

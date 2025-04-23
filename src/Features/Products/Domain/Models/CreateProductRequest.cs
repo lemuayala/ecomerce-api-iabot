@@ -8,5 +8,5 @@ public class CreateProductRequest
     public string? Category { get; set; }
     public IFormFile? ImageFile { get; set; }
     public List<string>? Tags { get; set; }
-    public Dictionary<string, string>? Metadata { get; set; }
+    public string? Metadata { get; set; }
 }

@@ -43,7 +43,7 @@ public static class ProductEndpoints
                 Category = request.Category,
                 ImageUrl = imageUrl,
                 Tags = request.Tags ?? new List<string>(),
-                Metadata = request.Metadata ?? new Dictionary<string, string>()
+                Metadata = request.Metadata
             };
 
             await repo.AddAsync(product);
