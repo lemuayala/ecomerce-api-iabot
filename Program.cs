@@ -4,9 +4,11 @@ using Microsoft.SemanticKernel;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using System.Text.Json;
 using EcomerceAI.Api.Infrastructure.Database.TypeHandlers;
+using EcomerceAI.Application.Features.Products.Commands;
 using Dapper;
 using System.Text.Encodings.Web;
 using Azure.Storage.Blobs;
+using MediatR;
 
 DotEnv.Load();
 
@@ -76,8 +78,8 @@ builder.Services
     .AddScoped<IRecommendationService, RecommendationService>();
 
 // Configuración de MediatR (CQRS)
-// builder.Services.AddMediatR(cfg =>
-//     cfg.RegisterServicesFromAssembly(typeof(GetProductByIdQuery).Assembly));
+builder.Services.AddMediatR(cfg =>
+     cfg.RegisterServicesFromAssembly(typeof(CreateProductCommand).Assembly));
 
 // Health Checks
 builder.Services.AddHealthChecks()
