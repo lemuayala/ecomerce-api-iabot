@@ -126,4 +126,3 @@ Las contribuciones son bienvenidas. Si deseas contribuir, por favor:
 ## 📄 Licencia
 
 Este proyecto está bajo la Licencia MIT. Consulta el archivo LICENSE para más detalles.
-```
